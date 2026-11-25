@@ -15,3 +15,4 @@ Repo hiện mới có tài liệu, chưa có mã.
    - [docs/reference/claude-code-cross-session.md](docs/reference/claude-code-cross-session.md)
    - [docs/reference/jev-api.md](docs/reference/jev-api.md)
    - [docs/reference/open-source-survey.md](docs/reference/open-source-survey.md)
+   - [docs/reference/graphify.md](docs/reference/graphify.md)

@@ -62,6 +62,10 @@ Làm theo thứ tự; ghi kết quả vào `docs/phase0-results.md`.
    mẫu ở [reference/jev-api.md](reference/jev-api.md). Không ghi khóa vào file
    nào trong repo.
 5. Tìm và đọc dự án "bvn aidd" (mục 1 ở trên).
+6. Thử graphify trên dự án đích (hơn 1.000 file) theo mục "Cách đo" trong
+   [reference/graphify.md](reference/graphify.md): cài `graphifyy`, dựng đồ thị
+   chỉ từ code, nối `graphify-mcp` vào một phiên, so token và kết quả có và
+   không có đồ thị. Không cài hook của graphify.
 
 ## Sau giai đoạn 0
 
