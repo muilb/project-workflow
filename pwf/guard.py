@@ -1,4 +1,7 @@
-"""Hook PreToolUse cho SendMessage: chỉ cho gửi tới phiên có trong `can_send_to`.
+"""Hook PreToolUse cho SendMessage.
+
+Chặn tin gửi tới phiên ngoài `can_send_to`, và tin không theo một trong bốn mẫu
+của `pwf.messages`. Tin được cho qua thì ghi vào sổ tin của dự án.
 
 Claude Code đưa lời gọi công cụ vào stdin dưới dạng JSON. Thoát với mã 2 thì lời
 gọi bị chặn và nội dung stderr được trả về cho Claude (đã kiểm chứng trên
@@ -11,6 +14,7 @@ import sys
 from pathlib import Path
 from typing import Optional, TextIO
 
+from . import messages
 from . import team as team_mod
 
 BLOCK = 2
@@ -29,14 +33,22 @@ def check(payload: dict, team: team_mod.Team, sender: str) -> Optional[str]:
     if payload.get("tool_name") != "SendMessage":
         return None
     allowed = team.session(sender).can_send_to
-    target = recipient_of(payload.get("tool_input") or {})
-    if target in allowed:
-        return None
-    listing = ", ".join(allowed) if allowed else "(không có phiên nào)"
-    return (
-        f"Phiên {sender} không được gửi tin tới '{target}'. "
-        f"Chỉ được gửi tới: {listing}. Không thử lại với tên khác ngoài danh sách này."
+    tool_input = payload.get("tool_input") or {}
+    target = recipient_of(tool_input)
+    if target not in allowed:
+        listing = ", ".join(allowed) if allowed else "(không có phiên nào)"
+        return (
+            f"Phiên {sender} không được gửi tin tới '{target}'. "
+            f"Chỉ được gửi tới: {listing}. Không thử lại với tên khác ngoài danh sách này."
+        )
+    text = tool_input.get("message") or tool_input.get("content") or ""
+    msg, err = messages.validate(
+        text if isinstance(text, str) else "", team.session(sender).role, team.session(target).role
     )
+    if err:
+        return err
+    messages.record(team.root, sender, target, msg)
+    return None
 
 
 def run(root: Path, sender: str, stdin: TextIO, stderr: TextIO) -> int:

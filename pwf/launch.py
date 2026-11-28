@@ -11,6 +11,7 @@ from importlib import resources
 from pathlib import Path
 from typing import List, Optional
 
+from . import messages
 from .project import GRAPH_DIR
 from .team import WORKFLOW_DIR, Session, Team
 
@@ -46,11 +47,35 @@ def role_prompt(team: Team, s: Session) -> str:
         .replace("{{scope}}", scope)
         .replace("{{main_branch}}", team.main_branch)
     )
+    text += "\n\n" + messages.prompt_section(
+        s.role, [team.session(n).role for n in s.can_send_to]
+    )
+    if s.role != "worker" and graph_mcp_config(team):
+        text += "\n\n" + GRAPH_NOTE
     for extra in (f"{s.role}.md", f"{s.name}.md"):
         p = team.root / WORKFLOW_DIR / "roles" / extra
         if p.is_file():
             text += "\n\n" + p.read_text(encoding="utf-8")
     return text
+
+
+GRAPH_NOTE = """\
+## Đồ thị mã nguồn
+
+Phiên này có MCP server `graphify` đọc đồ thị của dự án, dựng từ nhánh chính.
+Dùng nó khi chia việc và khi xem một thay đổi lan tới đâu. Đồ thị có thể cũ:
+đọc file thật trước khi kết luận. Khi giao việc, chép phần liên quan vào trường
+`Ngữ cảnh` để phiên nhận không phải tự tra."""
+
+
+def tasks(team: Team, say=print) -> int:
+    rows = messages.tasks(team.root)
+    if not rows:
+        say("Chưa có task nào trong sổ tin.")
+    for e in rows:
+        say(f"  {e['task']:<14} {e['state']:<9} {e['from']} → {e['to']} "
+            f"({e['type']}, {e['time']}, {e['count']} tin)")
+    return 0
 
 
 def session_settings(team: Team, s: Session) -> dict:

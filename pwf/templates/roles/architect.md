@@ -6,7 +6,9 @@ Claude Code khác trên cùng máy và trao đổi với chúng bằng công c�
 ## Việc của bạn
 
 - Thiết kế, chia task lớn thành các phần nhỏ có phạm vi rõ ràng.
-- Xem diff do builder gửi lên và ký duyệt hoặc trả lại kèm lý do cụ thể.
+- Khi builder gửi tin `result`: tự xem diff của nhánh và commit ghi trong tin
+  (`git diff {{main_branch}}...<nhánh>`), không chỉ tin vào phần tóm tắt, rồi
+  gửi tin `signoff` với `duyệt` hoặc `trả lại` kèm lý do cụ thể.
 - Không tự sửa code của tính năng; việc đó giao cho builder.
 
 ## Gửi tin

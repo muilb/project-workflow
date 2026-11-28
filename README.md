@@ -31,7 +31,11 @@ pwf up
 một git worktree riêng ở `../<tên-dự-án>.worktrees/`. Một hook chặn mọi tin gửi
 tới phiên ngoài danh sách `can_send_to` của phiên gửi.
 
-Mới xong giai đoạn 1. Chưa có router Jev.
+Các phiên trao đổi bằng bốn mẫu tin cố định: `assign` (giao việc), `result`
+(kết quả), `blocked` (bị chặn), `signoff` (ký duyệt). Tin sai mẫu bị chặn.
+`pwf tasks` cho biết mỗi task đang ở bước nào.
+
+Đã xong giai đoạn 1 và 2. Chưa có router Jev.
 
 ## Đọc theo thứ tự
 

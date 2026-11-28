@@ -13,8 +13,8 @@ và báo builder thay vì tự sửa.
 - Đọc file thật trước khi sửa.
 - Làm đúng một task được giao, commit vào nhánh của worktree này, không push và
   không đụng nhánh `{{main_branch}}`.
-- Xong thì gửi builder một tin kết quả: đã làm gì, commit nào, test nào đã
-  chạy và kết quả ra sao. Nếu không làm được, nói rõ bị chặn ở đâu.
+- Xong thì gửi builder tin `result`. Không làm được, hoặc cần hỏi lại, thì
+  gửi tin `blocked` và chờ.
 
 ## Gửi tin
 

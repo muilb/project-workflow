@@ -77,8 +77,8 @@ def run_guard(repo, sender, tool_input, tool="SendMessage"):
 
 
 def test_guard_allows_listed_and_blocks_others(repo):
-    assert run_guard(repo, "shop-backend", {"to": "shop-builder"})[0] == 0
-    assert run_guard(repo, "shop-backend", {"to": "shop-builder [46ed9e]"})[0] == 0
+    assert run_guard(repo, "shop-backend", {"to": "shop-builder", "message": RESULT})[0] == 0
+    assert run_guard(repo, "shop-backend", {"to": "shop-builder [46ed9e]", "content": RESULT})[0] == 0
     code, err = run_guard(repo, "shop-backend", {"to": "shop-architect"})
     assert code == 2 and "shop-builder" in err
     assert run_guard(repo, "shop-backend", {"to": "other-builder"})[0] == 2
@@ -124,3 +124,77 @@ def test_up_print_creates_worktrees_and_is_repeatable(repo):
     out = []
     launch.status(team, "print", say=out.append)
     assert any("pwf/shop-builder, 0 file" in l for l in out)
+
+
+# ---------- giai đoạn 2: mẫu tin ----------
+
+from pwf import messages
+
+ASSIGN = "[pwf:assign] T-1\nMục tiêu: thêm f4\nFile: backend/m4.py\nXong khi: pytest qua"
+RESULT = "[pwf:result] T-1\nĐã làm: thêm f4\nCommit: pwf/shop-backend abc123\nTest: pytest, 3 passed"
+SIGNOFF = "[pwf:signoff] T-1\nQuyết định: duyệt\nLý do: đã xem diff"
+
+
+def test_parse_multiline_and_optional_fields():
+    msg, err = messages.parse(ASSIGN + "\n  dòng hai\nNgữ cảnh: gọi từ api.py")
+    assert err is None and msg.type == "assign" and msg.task == "T-1"
+    assert msg.fields["Xong khi"] == "pytest qua\ndòng hai"
+    assert msg.fields["Ngữ cảnh"] == "gọi từ api.py"
+
+
+def test_parse_accepts_decomposed_unicode_and_case():
+    import unicodedata
+    text = unicodedata.normalize("NFD", ASSIGN).replace("File:", "FILE:")
+    assert messages.parse(text)[1] is None
+
+
+@pytest.mark.parametrize("text,needle", [
+    ("làm giúp cái này nhé", "Dòng đầu"),
+    ("[pwf:chat] T-1\nx: y", "không tồn tại"),
+    ("[pwf:assign] T-1\nMục tiêu: a\nFile:\nXong khi: b", "thiếu trường: File"),
+    ("[pwf:signoff] T-1\nQuyết định: có lẽ\nLý do: x", "duyệt"),
+    ("[pwf:assign]\nMục tiêu: a", "Dòng đầu"),
+])
+def test_parse_rejects(text, needle):
+    msg, err = messages.parse(text)
+    assert msg is None and needle in err
+
+
+def test_flow_limits_types_per_role_pair():
+    assert messages.validate(RESULT, "worker", "builder")[1] is None
+    assert messages.validate(ASSIGN, "builder", "worker")[1] is None
+    assert messages.validate(SIGNOFF, "architect", "builder")[1] is None
+    err = messages.validate(ASSIGN, "worker", "builder")[1]
+    assert "không gửi tin `assign`" in err and "[pwf:result]" in err
+    assert messages.validate(SIGNOFF, "builder", "worker")[1] is not None
+    assert "Không có loại tin nào" in messages.validate(RESULT, "worker", "architect")[1]
+
+
+def test_guard_enforces_templates_and_logs(repo):
+    code, err = run_guard(repo, "shop-backend", {"to": "shop-builder", "message": "xong rồi"})
+    assert code == 2 and "[pwf:result] <mã-task>" in err
+    assert messages.tasks(repo) == []
+    steps = [("shop-architect", "shop-builder", ASSIGN, "đang làm"),
+             ("shop-builder", "shop-backend", ASSIGN, "đang làm"),
+             ("shop-backend", "shop-builder", RESULT, "chờ xem"),
+             ("shop-builder", "shop-architect", RESULT, "chờ xem"),
+             ("shop-architect", "shop-builder", SIGNOFF.replace("duyệt", "Trả lại, thiếu test"), "trả lại"),
+             ("shop-architect", "shop-builder", SIGNOFF, "xong")]
+    for sender, to, text, state in steps:
+        assert run_guard(repo, sender, {"to": to, "message": text}) == (0, "")
+        (task,) = messages.tasks(repo)
+        assert task["state"] == state and task["from"] == sender
+    assert task["count"] == 6
+    out = []
+    launch.tasks(team_mod.load(repo), say=out.append)
+    assert "T-1" in out[0] and "xong" in out[0]
+
+
+def test_role_prompts_list_only_sendable_templates(repo):
+    team = team_mod.load(repo)
+    worker = launch.role_prompt(team, team.session("shop-backend"))
+    assert "[pwf:result]" in worker and "[pwf:blocked]" in worker
+    assert "[pwf:assign]" not in worker and "`assign` (giao việc)" in worker
+    architect = launch.role_prompt(team, team.session("shop-architect"))
+    assert "[pwf:signoff]" in architect and "[pwf:result]" not in architect
+    assert "{{" not in worker + architect

@@ -8,8 +8,10 @@ bằng công cụ `SendMessage`.
 
 - Nhận thiết kế từ architect, tự làm các thay đổi liên module.
 - Giao phần việc nhỏ, nằm gọn trong phạm vi của một worker, cho worker đó.
-- Gộp kết quả của worker, chạy test, rồi gửi architect xem trước khi coi là
-  xong.
+- Khi worker gửi tin `result`: xem commit, gộp vào nhánh của bạn, chạy test.
+  Chưa đạt thì gửi lại tin `assign` cùng mã task, nêu chỗ cần sửa.
+- Khi cả task xong: gửi architect tin `result`. Task chỉ xong khi nhận được
+  `signoff` với `duyệt`; nhận `trả lại` thì sửa rồi gửi `result` lần nữa.
 
 ## Gửi tin
 

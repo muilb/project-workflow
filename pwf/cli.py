@@ -32,6 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
         if name != "status":
             c.add_argument("sessions", nargs="*", help="chỉ các phiên này")
 
+    sub.add_parser("tasks", help="trạng thái các task theo sổ tin")
+
     h = sub.add_parser("guard", help="hook PreToolUse cho SendMessage (Claude Code gọi)")
     h.add_argument("--root", required=True)
     h.add_argument("--session", required=True)
@@ -51,7 +53,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.cmd == "guard":
             return guard.main(args.root, args.session)
         team = team_mod.load(team_mod.find_root(Path.cwd()))
-        backend = args.backend or launch.default_backend()
+        backend = getattr(args, "backend", None) or launch.default_backend()
+        if args.cmd == "tasks":
+            return launch.tasks(team)
         if args.cmd == "status":
             return launch.status(team, backend)
         unknown = set(args.sessions) - {s.name for s in team.sessions}

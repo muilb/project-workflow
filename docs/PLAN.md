@@ -142,6 +142,18 @@ không.
 
 ### Giai đoạn 2: quy ước phối hợp
 
+Đã có mã trong `pwf/messages.py`. Đã chạy thử trên Linux với hai phiên Haiku:
+builder giao việc, worker commit và báo kết quả, không tin nào bị chặn. Chưa
+chạy thử đoạn architect ký duyệt với phiên thật.
+
+- Mẫu tin: dòng đầu `[pwf:<loại>] <mã-task>`, sau đó là các trường bắt buộc.
+  Hook `pwf guard` chặn tin sai mẫu hoặc sai chiều và trả mẫu đúng cho phiên
+  gửi. Không có tin tự do; cần hỏi lại thì dùng `blocked`.
+- Chiều gửi: architect → builder (`assign`, `signoff`); builder → worker
+  (`assign`); builder → architect và worker → builder (`result`, `blocked`).
+- Tin được cho qua ghi vào `.workflow/log/messages.jsonl`; `pwf tasks` cho biết
+  trạng thái mới nhất của từng task.
+
 - Bốn mẫu tin cố định: giao việc, kết quả, bị chặn, ký duyệt.
 - Luồng chuẩn: builder giao việc → worker báo kết quả → architect kiểm tra diff
   và ký duyệt.
