@@ -55,6 +55,14 @@ def check(payload: dict, team: team_mod.Team, sender: str,
     msg, err = messages.validate(text, me.role, team.session(target).role)
     if err:
         return Outcome(block=err)
+    # Chặn hai phiên nhắn qua lại vô hạn về cùng một task. Tin ký duyệt vẫn đi
+    # được, vì nó khép task lại.
+    if msg.type != "signoff" and messages.count(team.root, msg.task) >= team.messages_per_task:
+        return Outcome(block=(
+            f"Task {msg.task} đã có {team.messages_per_task} tin, chạm giới hạn. Dừng trao "
+            f"đổi về task này và báo người dùng tình trạng hiện tại. Người dùng mở lại "
+            f"bằng `pwf reopen {msg.task}`. Không đổi mã task để gửi tiếp."
+        ))
 
     new_input = None
     if router:

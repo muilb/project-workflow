@@ -200,6 +200,23 @@ Cách router xử lý một tin đã đúng mẫu:
 
 ### Giai đoạn 4: rào chắn
 
+Đã có mã. Đã chạy thử trên Linux với một phiên thật chạm giới hạn tin: phiên bị
+chặn và dừng lại báo người dùng.
+
+- `pwf check` rà cấu hình, và chạy trước mỗi `pwf up`. Lỗi (dừng `up`): Claude
+  Code thiếu hoặc quá cũ; file trong `.workflow/` trông như chứa khóa. Cảnh báo:
+  architect không để `hold`, worker không để `accept` hoặc thiếu `scope`, phiên
+  chạy lệnh không hỏi, `.gitignore` thiếu dòng, bật router mà chưa đặt khóa.
+- Giới hạn chuyển tiếp tính theo task: mặc định 12 tin (`limits.messages_per_task`
+  trong `team.yaml`). Chạm giới hạn thì mọi tin về task đó bị chặn, trừ
+  `signoff`; người dùng mở lại bằng `pwf reopen <mã-task>`.
+- Settings của mỗi phiên có `permissions.disableBypassPermissionsMode`. Tài
+  liệu Claude Code không thống nhất về việc khóa này có hiệu lực ngoài managed
+  settings hay không, và chưa chạy thử; rào chắn chắc chắn là `team.yaml` từ
+  chối `bypassPermissions`.
+
+Các mục gốc của giai đoạn này:
+
 - Architect để `crossSessionInbound` là `hold`, worker để `accept`.
 - Không phiên nào chạy ở chế độ bỏ qua quyền.
 - Giới hạn số lần chuyển tiếp của một tin để tránh hai phiên nhắn qua lại vô

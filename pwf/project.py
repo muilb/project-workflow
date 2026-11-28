@@ -122,6 +122,8 @@ def render_team(prefix: str, main_branch: str, dirname: str, areas: List[tuple])
         f"project: {prefix}        # tiền tố của mọi tên phiên\n"
         f"main_branch: {main_branch}\n"
         "router: none          # jev: hỏi Jev trước mỗi tin (cần TYPESAFE_API_KEY)\n"
+        "limits:\n"
+        "  messages_per_task: 12   # quá số tin này, task bị dừng chờ `pwf reopen`\n"
         "\n"
         "# permission_mode: default | acceptEdits | plan | auto | dontAsk\n"
         "# inbound (crossSessionInbound): accept | hold | refuse\n"

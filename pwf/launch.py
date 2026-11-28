@@ -74,7 +74,7 @@ def tasks(team: Team, say=print) -> int:
         say("Chưa có task nào trong sổ tin.")
     for e in rows:
         say(f"  {e['task']:<14} {e['state']:<9} {e['from']} → {e['to']} "
-            f"({e['type']}, {e['time']}, {e['count']} tin)")
+            f"({e['type']}, {e['time']}, {e['count']}/{team.messages_per_task} tin)")
     return 0
 
 
@@ -85,6 +85,8 @@ def session_settings(team: Team, s: Session) -> dict:
     )
     return {
         "crossSessionInbound": s.inbound,
+        # Theo tài liệu, khóa này khiến Claude Code từ chối chế độ bỏ qua quyền.
+        "permissions": {"disableBypassPermissionsMode": "disable"},
         "hooks": {
             "PreToolUse": [
                 {"matcher": "SendMessage", "hooks": [{"type": "command", "command": command}]}

@@ -172,21 +172,51 @@ def record(root: Path, sender: str, recipient: str, msg: Message) -> None:
 STATE = {"assign": "đang làm", "result": "chờ xem", "blocked": "bị chặn"}
 
 
-def tasks(root: Path) -> List[dict]:
-    """Trạng thái mới nhất của từng task, theo thứ tự xuất hiện."""
+def _entries(root: Path) -> List[dict]:
     path = log_path(root)
-    latest: Dict[str, dict] = {}
+    out = []
     if path.is_file():
         for line in path.read_text(encoding="utf-8").splitlines():
             try:
                 e = json.loads(line)
             except ValueError:
                 continue
-            e["count"] = latest.get(e["task"], {}).get("count", 0) + 1
-            latest[e["task"]] = e
+            if isinstance(e, dict) and e.get("task"):
+                out.append(e)
+    return out
+
+
+def tasks(root: Path) -> List[dict]:
+    """Trạng thái mới nhất của từng task, theo thứ tự xuất hiện.
+
+    `count` là số tin kể từ lần mở lại gần nhất; hook so nó với giới hạn.
+    """
+    latest: Dict[str, dict] = {}
+    for e in _entries(root):
+        prev = latest.get(e["task"], {})
+        if e.get("type") == "reopen":
+            if prev:
+                prev["count"] = 0
+            continue
+        e["count"] = prev.get("count", 0) + 1
+        latest[e["task"]] = e
     for e in latest.values():
         if e["type"] == "signoff":
             e["state"] = "xong" if e.get("decision") == "approved" else "trả lại"
         else:
             e["state"] = STATE.get(e["type"], e["type"])
     return list(latest.values())
+
+
+def count(root: Path, task: str) -> int:
+    return next((e["count"] for e in tasks(root) if e["task"] == task), 0)
+
+
+def reopen(root: Path, task: str) -> bool:
+    """Đặt lại bộ đếm tin của một task. Trả về False nếu task chưa có trong sổ."""
+    if not any(e["task"] == task for e in tasks(root)):
+        return False
+    with log_path(root).open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                            "type": "reopen", "task": task}) + "\n")
+    return True

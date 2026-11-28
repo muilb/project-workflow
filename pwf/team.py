@@ -44,6 +44,7 @@ class Team:
     toolkit_version: str
     sessions: List[Session]
     router: str = "none"
+    messages_per_task: int = 12
 
     def session(self, name: str) -> Session:
         for s in self.sessions:
@@ -136,7 +137,15 @@ def parse(data: dict, root: Path) -> Team:
     if router not in ROUTERS:
         raise TeamError(f"`router` phải là một trong {ROUTERS}")
 
+    limits = data.get("limits") or {}
+    if not isinstance(limits, dict) or set(limits) - {"messages_per_task"}:
+        raise TeamError("`limits` chỉ nhận khóa `messages_per_task`")
+    per_task = limits.get("messages_per_task", 12)
+    if not isinstance(per_task, int) or isinstance(per_task, bool) or per_task < 2:
+        raise TeamError("`limits.messages_per_task` phải là số nguyên từ 2 trở lên")
+
     return Team(
+        messages_per_task=per_task,
         router=router,
         root=root,
         project=project,

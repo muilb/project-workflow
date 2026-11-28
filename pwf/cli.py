@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from . import __version__, guard, launch, project
+from . import __version__, checks, guard, launch, messages, project
 from . import router as router_mod
 from . import team as team_mod
 
@@ -35,6 +35,10 @@ def build_parser() -> argparse.ArgumentParser:
             c.add_argument("sessions", nargs="*", help="chỉ các phiên này")
 
     sub.add_parser("tasks", help="trạng thái các task theo sổ tin")
+
+    o = sub.add_parser("reopen", help="đặt lại bộ đếm tin của một task đã chạm giới hạn")
+    o.add_argument("task")
+    sub.add_parser("check", help="rà cấu hình và rào chắn của dự án")
 
     r = sub.add_parser("route", help="hỏi router một tin sẽ được xử lý thế nào, không gửi")
     r.add_argument("--from", dest="sender", required=True, help="tên phiên gửi")
@@ -76,6 +80,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.cmd == "route":
             return route(team, args.sender, args.to,
                          sys.stdin.read() if args.text == "-" else args.text)
+        if args.cmd == "reopen":
+            if not messages.reopen(team.root, args.task):
+                raise team_mod.TeamError(f"Không có task '{args.task}' trong sổ tin")
+            print(f"{args.task}: đã mở lại")
+            return 0
+        if args.cmd == "check":
+            return 1 if checks.report(checks.run(team)) else 0
         if args.cmd == "tasks":
             return launch.tasks(team)
         if args.cmd == "status":
@@ -83,6 +94,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         unknown = set(args.sessions) - {s.name for s in team.sessions}
         if unknown:
             raise team_mod.TeamError(f"Không có phiên: {', '.join(sorted(unknown))}")
+        if args.cmd == "up" and checks.report(checks.run(team)):
+            print("pwf: sửa các lỗi trên rồi chạy lại `pwf up`.", file=sys.stderr)
+            return 1
         fn = launch.up if args.cmd == "up" else launch.down
         return fn(team, backend, args.sessions or None)
     except (team_mod.TeamError, router_mod.RouterError) as e:

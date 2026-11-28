@@ -39,7 +39,10 @@ Router Jev đã có khung nhưng tắt theo mặc định và chưa gọi Jev th
 Bật bằng `router: jev` trong `.workflow/team.yaml`, với khóa trong biến môi
 trường `TYPESAFE_API_KEY`. Xem trước quyết định cho một tin bằng `pwf route`.
 
-Đã xong giai đoạn 1 và 2, và phần khung của giai đoạn 3.
+`pwf check` rà cấu hình và chạy trước mỗi `pwf up`. Mỗi task dừng lại sau 12
+tin để hai phiên không nhắn qua lại mãi; mở lại bằng `pwf reopen <mã-task>`.
+
+Đã xong giai đoạn 1, 2 và 4, và phần khung của giai đoạn 3.
 
 ## Đọc theo thứ tự
 
