@@ -43,6 +43,10 @@ nên mọi thứ cần biết nằm ở đây và trong các file được liên
 
 ## Việc cần làm trước (giai đoạn 0)
 
+Cập nhật 2026-11-28: các bước 2 và 3 đã chạy trên Linux trong một phiên cloud,
+kết quả ở [phase0-results.md](phase0-results.md). Trên PC còn phải làm bước 1,
+4, 5, 6 và lặp lại bước 2 để xác nhận trên đúng hệ điều hành đó.
+
 Làm theo thứ tự; ghi kết quả vào `docs/phase0-results.md`.
 
 1. Ghi lại hệ điều hành và `claude --version`.
@@ -69,5 +73,6 @@ Làm theo thứ tự; ghi kết quả vào `docs/phase0-results.md`.
 
 ## Sau giai đoạn 0
 
-Tiếp tục giai đoạn 1 trong [PLAN.md](PLAN.md). Nhánh làm việc của repo này là
-`ccr-9b77bcc0-r6lcgd`.
+Giai đoạn 1 đã có mã (gói `pwf`, xem README). Trên PC: cài bằng
+`pip install -e .`, chạy `pwf init` rồi `pwf up` trong dự án đích, và báo lại
+những gì hỏng. Sau đó tiếp tục giai đoạn 2 trong [PLAN.md](PLAN.md).

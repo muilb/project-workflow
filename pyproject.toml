@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project-workflow"
+version = "0.1.0"
+description = "Điều phối nhiều phiên Claude Code theo vai trò trên một máy"
+requires-python = ">=3.9"
+dependencies = ["PyYAML>=6"]
+
+[project.scripts]
+pwf = "pwf.cli:main"
+
+[tool.setuptools]
+packages = ["pwf"]
+
+[tool.setuptools.package-data]
+pwf = ["templates/**/*"]

@@ -74,7 +74,7 @@ container và máy chủ cũng vậy.
 - Có giới hạn tần suất theo người gửi và bỏ tin lặp y hệt; tài liệu không nêu
   con số.
 
-**Tài liệu không nói**
+**Tài liệu không nói** (một phần đã chạy thử, xem [../phase0-results.md](../phase0-results.md))
 
 - Phiên `-p` sống bao lâu khi chờ tin.
 - Tên người gửi của tin do script tự gửi vào socket. Một công cụ bên thứ ba

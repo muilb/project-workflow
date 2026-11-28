@@ -16,15 +16,16 @@ Ba tầng tách biệt:
 | Tầng | Dùng gì | Ghi chú |
 |---|---|---|
 | Vận chuyển | Cross-session messaging có sẵn của Claude Code (`ListAgents`, `SendMessage`) | Không tự viết socket hay mailbox |
-| Quyết định | Jev, đóng gói thành công cụ `route` | Phiên gửi gọi `route` trước khi `SendMessage` |
+| Quyết định | Jev, gọi từ hook `PreToolUse` của `SendMessage` | Hook đổi người nhận hoặc chặn tin; có thêm công cụ `route` để hỏi trước |
 | Ngữ cảnh (tùy chọn) | Graphify, đọc qua MCP server cục bộ `graphify-mcp` | Chỉ bật cho dự án từ khoảng 500 file; xem [reference/graphify.md](reference/graphify.md) |
 
 Các lựa chọn thiết kế:
 
-- **Jev là một công cụ, không phải một trạm trung chuyển.** Claude Code không có
-  hook nào được tài liệu hóa để chặn và đổi hướng tin nhắn giữa đường. Cho một
-  daemon tự bơm tin vào socket thì làm được, nhưng tên người gửi khi đó không
-  được đảm bảo.
+- **Jev chạy trong hook `PreToolUse` của `SendMessage`.** Giai đoạn 0 cho thấy
+  hook này chặn được lời gọi và đổi được trường `to`
+  ([phase0-results.md](phase0-results.md)). Router vì vậy không phụ thuộc vào
+  việc Claude nhớ gọi một công cụ trước khi gửi. Công cụ `route` vẫn có, để
+  phiên hỏi trước khi soạn tin.
 - **Mỗi phiên một git worktree** để các phiên không ghi đè file của nhau.
 - **Mỗi phiên đặt tên bằng `--name` và chọn model bằng `--model`.**
 - **Router nằm sau một giao diện chung**, để thay Jev bằng cách khác (ví dụ một
@@ -58,18 +59,21 @@ Repo này là bộ công cụ, gồm:
 | `.workflow/team.yaml` | Tiền tố dự án, tên phiên, model, worktree, chế độ quyền, `crossSessionInbound`, phạm vi từng worker, phiên bản bộ công cụ | Có |
 | `.workflow/roles/` | Chỉ phần ghi đè riêng của dự án; còn lại lấy từ mẫu chung | Có |
 | `.workflow/thresholds.yaml` | Ngưỡng Jev riêng, nếu khác mặc định | Có |
-| `.mcp.json` | Khai báo `route` và `graphify-mcp` trỏ vào đồ thị của dự án | Có |
 | `graphify-out/` | Đồ thị của dự án | Không; dựng lại được |
 | `.workflow/log/` | Log quyết định của router | Không |
+| `.workflow/run/` | Prompt, settings và cấu hình MCP sinh ra cho từng phiên mỗi lần `up` | Không |
 
 ### `init` làm gì
 
 1. Kiểm tra dự án: có git không, ngôn ngữ gì, bao nhiêu file.
 2. Dựng đồ thị chỉ từ code với `GRAPHIFY_BACKEND=none`, nên không tốn token.
    Dự án dưới khoảng 500 file thì bỏ qua bước này và bước 3.
-3. Đọc các cụm trong đồ thị, đề xuất danh sách worker và phạm vi, ghi vào
-   `team.yaml` để người dùng sửa trước khi chạy `up`.
-4. Ghi `.mcp.json` và bổ sung `.gitignore`.
+3. Đề xuất danh sách worker và phạm vi theo thư mục, ghi vào `team.yaml` để
+   người dùng sửa trước khi chạy `up`. Cụm của graphify quá mịn để dùng thẳng
+   (246 file cho 381 cụm).
+4. Bổ sung `.gitignore`. `graphify-mcp` được nối vào từng phiên lúc `up` bằng
+   `--mcp-config` với đường dẫn tuyệt đối, vì worktree không có `graphify-out/`
+   nên một `.mcp.json` dùng đường dẫn tương đối sẽ không chạy ở đó.
 5. Không cài hook nào.
 
 Chạy lại `init` trên dự án đã có thì chỉ cập nhật đồ thị, không ghi đè những
@@ -128,10 +132,13 @@ không.
 
 ### Giai đoạn 1: khung đội hình và `init`, chưa có Jev
 
+Đã có mã trong gói `pwf`; đã chạy thử trên Linux, chưa chạy trên Windows.
+
 - Mẫu `team.yaml` và `roles/` dùng chung.
 - Lệnh `init` như mô tả ở trên, thử trên một dự án thật.
 - Script `up`, `down`, `status` đọc `team.yaml` của dự án hiện tại.
 - Bắt đầu với ba phiên: architect, builder, một worker.
+- `pwf guard`: hook chặn `SendMessage` tới phiên ngoài `can_send_to`.
 
 ### Giai đoạn 2: quy ước phối hợp
 
@@ -142,8 +149,8 @@ không.
 
 ### Giai đoạn 3: router Jev
 
-- Công cụ `route` nhận nội dung tin, trả về người nhận, độ lớn task và quyết
-  định cho gửi hay chặn.
+- Mở rộng hook `pwf guard`: gọi Jev với nội dung tin, rồi cho gửi, đổi người
+  nhận hoặc chặn. Công cụ `route` trả cùng kết quả cho phiên muốn hỏi trước.
 - Câu hỏi và ngưỡng mặc định nằm trong một file duy nhất của bộ công cụ; mỗi dự
   án ghi đè qua `.workflow/thresholds.yaml`.
 - Ghim phiên bản model (ví dụ `jev-1.14.0`) sau khi đã chỉnh ngưỡng.
@@ -175,10 +182,12 @@ không.
   nhiễu vẫn có thể kéo các phiên khác đi sai hướng.
 - Các phiên nhắn qua lại lâu vẫn tính vào mức sử dụng.
 - Alias `jev-latest` có thể đổi model, làm lệch các ngưỡng đã chỉnh.
-- Ba điểm tài liệu Claude Code chưa nói rõ (xem giai đoạn 0) có thể buộc đổi
-  cách chạy worker.
-- Phiên của hai dự án trên cùng máy thấy nhau. Tiền tố tên chỉ là quy ước; nếu
-  một phiên gửi sai tên thì không có gì chặn.
+- Hook và backend Windows Terminal chưa chạy trên Windows gốc lần nào.
+- Hook chặn cả `SendMessage` tới subagent của chính phiên đó, vì không phân
+  biệt được với tên phiên.
+- Phiên của hai dự án trên cùng máy thấy nhau. Hook `pwf guard` chặn phiên của
+  bộ công cụ gửi ra ngoài `can_send_to`, nhưng không chặn được phiên lạ gửi
+  vào.
 - Đồ thị cũ có thể khiến phiên tin vào quan hệ không còn đúng.
 - Số liệu tiết kiệm token của graphify do chính dự án đó tự đo; mức lợi thật
   trên dự án đích chưa biết.
