@@ -1,0 +1,39 @@
+# Câu hỏi và ngưỡng mặc định của router Jev. Đây là file duy nhất chứa chúng.
+# Mỗi dự án ghi đè từng khóa trong `.workflow/thresholds.yaml` (cùng cấu trúc).
+# Các ngưỡng dưới đây là điểm xuất phát thận trọng, chưa chỉnh theo số liệu thật.
+
+model: jev-latest          # ghim một phiên bản (ví dụ jev-1.14.0) sau khi chỉnh ngưỡng
+endpoint: https://api.typesafe.ai/v1/systemone
+timeout_seconds: 10
+retries: 1                 # số lần thử lại khi gặp 429 hoặc 529
+on_error: escalate         # escalate: chặn tin giao việc cho worker, bảo builder
+                           #           tự làm hoặc hỏi architect
+                           # allow: cho tin đi như khi không có router
+
+questions:
+  recipient:
+    type: choice
+    instructions: Phiên nào nên nhận task này?
+    # criteria lấy từ `description` hoặc `scope` của các worker trong team.yaml
+  fits_any:
+    type: noul
+    instructions: Task này có thuộc phạm vi của ít nhất một phiên trong danh sách không?
+  task_size:
+    type: score
+    instructions: Task này lớn cỡ nào?
+    criteria:
+      - Sửa nhỏ trong một file
+      - Thay đổi trong một module
+      - Thay đổi liên module
+      - Cần thiết kế hoặc phải chia nhỏ
+  leaks:
+    type: noul
+    instructions: Tin này có chứa bí mật (khóa API, mật khẩu, token) hoặc chép nguyên một khối ngữ cảnh dài thay vì nêu đường dẫn không?
+
+thresholds:
+  leaks_block: 0.7           # leaks trên mức này: chặn tin
+  fits_any_min: 0.3          # fits_any dưới mức này: không worker nào hợp
+  recipient_min: 0.7         # xác suất tối thiểu để đổi người nhận
+  size_confidence_min: 0.5   # confidence của task_size dưới mức này: không rõ độ lớn
+  worker_max_size: 1.5       # task_size trên mức này: quá lớn cho worker
+  builder_max_size: 2.5      # task_size trên mức này: cần architect chia nhỏ

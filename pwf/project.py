@@ -121,6 +121,7 @@ def render_team(prefix: str, main_branch: str, dirname: str, areas: List[tuple])
         f"toolkit_version: {__version__}\n"
         f"project: {prefix}        # tiền tố của mọi tên phiên\n"
         f"main_branch: {main_branch}\n"
+        "router: none          # jev: hỏi Jev trước mỗi tin (cần TYPESAFE_API_KEY)\n"
         "\n"
         "# permission_mode: default | acceptEdits | plan | auto | dontAsk\n"
         "# inbound (crossSessionInbound): accept | hold | refuse\n"

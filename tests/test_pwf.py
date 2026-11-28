@@ -69,10 +69,10 @@ def test_team_validation_rejects(repo, change, message):
         team_mod.parse(data, repo)
 
 
-def run_guard(repo, sender, tool_input, tool="SendMessage"):
+def run_guard(repo, sender, tool_input, tool="SendMessage", router=None, out=None):
     payload = {"tool_name": tool, "tool_input": tool_input}
     err = io.StringIO()
-    code = guard.run(repo, sender, io.StringIO(json.dumps(payload)), err)
+    code = guard.run(repo, sender, io.StringIO(json.dumps(payload)), err, router=router, stdout=out)
     return code, err.getvalue()
 
 

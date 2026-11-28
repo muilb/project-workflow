@@ -76,3 +76,8 @@ Làm theo thứ tự; ghi kết quả vào `docs/phase0-results.md`.
 Giai đoạn 1 đã có mã (gói `pwf`, xem README). Trên PC: cài bằng
 `pip install -e .`, chạy `pwf init` rồi `pwf up` trong dự án đích, và báo lại
 những gì hỏng. Sau đó tiếp tục giai đoạn 2 trong [PLAN.md](PLAN.md).
+
+Để thử router Jev thật: đặt `TYPESAFE_API_KEY`, rồi trong dự án đã `pwf init`
+chạy `pwf route --from <tiền-tố>-builder --to <tên-worker> "<tin assign>"`. Lệnh
+in câu trả lời của Jev và quyết định, không gửi tin. Nếu response khác dạng
+trong [reference/jev-api.md](reference/jev-api.md) thì sửa `pwf/router.py`.

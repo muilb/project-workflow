@@ -161,6 +161,34 @@ chạy thử đoạn architect ký duyệt với phiên thật.
 
 ### Giai đoạn 3: router Jev
 
+Phần khung đã có mã (`pwf/router.py`, `pwf/templates/router.yaml`), tắt theo mặc
+định; bật bằng `router: jev` trong `team.yaml`. Đã test bằng response giả và đã
+chạy với phiên Claude thật gọi một máy chủ Jev giả trên máy. **Chưa gọi Jev thật
+lần nào**: dạng request và response lấy từ tài liệu, ngưỡng chưa chỉnh theo số
+liệu, và chưa đối chiếu với dự án "bvn aidd".
+
+Cách router xử lý một tin đã đúng mẫu:
+
+| Tin | Hỏi Jev | Kết quả |
+|---|---|---|
+| Mọi tin | `leaks` | Trên 0,7: chặn |
+| `assign` từ builder cho worker | thêm `fits_any`, `task_size`, và `recipient` nếu có từ hai worker | Xem dưới |
+
+- `fits_any` dưới 0,3: chặn, bảo builder tự làm hoặc hỏi architect.
+- `task_size` có `confidence` dưới 0,5, hoặc điểm trên 2,5: chặn, bảo builder
+  gửi architect tin `blocked` để xin chia việc. Điểm trên 1,5: chặn, bảo
+  builder tự làm hoặc tách nhỏ.
+- `recipient` khác người builder chọn và xác suất từ 0,7: đổi người nhận. Thấp
+  hơn thì giữ lựa chọn của builder.
+- Jev lỗi, vượt hạn mức hoặc thiếu khóa: tin giao việc cho worker bị chặn kèm
+  hướng dẫn hỏi architect; các tin khác đi tiếp mà không kiểm tra `leaks`. Đổi
+  bằng `on_error: allow`. Vì luồng tin cố định không cho builder gửi `assign`
+  lên architect, "chuyển về architect" được làm bằng cách chặn và hướng dẫn,
+  không phải đổi người nhận.
+- Mọi quyết định ghi vào `.workflow/log/router.jsonl`.
+- `pwf route --from <phiên> --to <phiên> "<tin>"` cho xem quyết định mà không
+  gửi. Công cụ `route` dạng MCP chưa làm.
+
 - Mở rộng hook `pwf guard`: gọi Jev với nội dung tin, rồi cho gửi, đổi người
   nhận hoặc chặn. Công cụ `route` trả cùng kết quả cho phiên muốn hỏi trước.
 - Câu hỏi và ngưỡng mặc định nằm trong một file duy nhất của bộ công cụ; mỗi dự

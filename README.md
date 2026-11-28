@@ -35,7 +35,11 @@ Các phiên trao đổi bằng bốn mẫu tin cố định: `assign` (giao vi�
 (kết quả), `blocked` (bị chặn), `signoff` (ký duyệt). Tin sai mẫu bị chặn.
 `pwf tasks` cho biết mỗi task đang ở bước nào.
 
-Đã xong giai đoạn 1 và 2. Chưa có router Jev.
+Router Jev đã có khung nhưng tắt theo mặc định và chưa gọi Jev thật lần nào.
+Bật bằng `router: jev` trong `.workflow/team.yaml`, với khóa trong biến môi
+trường `TYPESAFE_API_KEY`. Xem trước quyết định cho một tin bằng `pwf route`.
+
+Đã xong giai đoạn 1 và 2, và phần khung của giai đoạn 3.
 
 ## Đọc theo thứ tự
 

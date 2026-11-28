@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import List, Optional
 
 from . import __version__, guard, launch, project
+from . import router as router_mod
 from . import team as team_mod
 
 
@@ -34,10 +36,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("tasks", help="trạng thái các task theo sổ tin")
 
+    r = sub.add_parser("route", help="hỏi router một tin sẽ được xử lý thế nào, không gửi")
+    r.add_argument("--from", dest="sender", required=True, help="tên phiên gửi")
+    r.add_argument("--to", required=True, help="tên phiên định gửi")
+    r.add_argument("text", help="nội dung tin; '-' để đọc từ stdin")
+
     h = sub.add_parser("guard", help="hook PreToolUse cho SendMessage (Claude Code gọi)")
     h.add_argument("--root", required=True)
     h.add_argument("--session", required=True)
     return p
+
+
+def route(team, sender: str, to: str, text: str) -> int:
+    """Chạy đúng bước router của hook nhưng không gửi và không ghi sổ."""
+    r = router_mod.JevRouter(router_mod.load_config(team.root))
+    me, target = team.session(sender), team.session(to)
+    routed = text.lstrip().startswith("[pwf:assign]") and target.role == "worker"
+    d = r.decide(text, to, router_mod.candidates_for(team, me) if routed else {})
+    print(json.dumps({"action": d.action, "to": d.to or to, "reason": d.reason,
+                      "model": d.model, "error": d.error, "answers": d.answers},
+                     ensure_ascii=False, indent=2))
+    return 0 if d.action != "block" else 2
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -54,6 +73,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             return guard.main(args.root, args.session)
         team = team_mod.load(team_mod.find_root(Path.cwd()))
         backend = getattr(args, "backend", None) or launch.default_backend()
+        if args.cmd == "route":
+            return route(team, args.sender, args.to,
+                         sys.stdin.read() if args.text == "-" else args.text)
         if args.cmd == "tasks":
             return launch.tasks(team)
         if args.cmd == "status":
@@ -63,7 +85,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             raise team_mod.TeamError(f"Không có phiên: {', '.join(sorted(unknown))}")
         fn = launch.up if args.cmd == "up" else launch.down
         return fn(team, backend, args.sessions or None)
-    except team_mod.TeamError as e:
+    except (team_mod.TeamError, router_mod.RouterError) as e:
         print(f"pwf: {e}", file=sys.stderr)
         return 1
 

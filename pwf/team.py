@@ -12,6 +12,7 @@ WORKFLOW_DIR = ".workflow"
 TEAM_FILE = "team.yaml"
 ROLES = ("architect", "builder", "worker")
 INBOUND = ("accept", "hold", "refuse")
+ROUTERS = ("none", "jev")
 # Không phiên nào được chạy ở chế độ bỏ qua quyền (PLAN.md, giai đoạn 4).
 PERMISSION_MODES = ("default", "acceptEdits", "plan", "auto", "dontAsk")
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -32,6 +33,7 @@ class Session:
     branch: Optional[str] = None
     can_send_to: List[str] = field(default_factory=list)
     scope: List[str] = field(default_factory=list)
+    description: Optional[str] = None  # router dùng để mô tả phiên cho Jev
 
 
 @dataclass
@@ -41,6 +43,7 @@ class Team:
     main_branch: str
     toolkit_version: str
     sessions: List[Session]
+    router: str = "none"
 
     def session(self, name: str) -> Session:
         for s in self.sessions:
@@ -129,7 +132,12 @@ def parse(data: dict, root: Path) -> Team:
     if len(set(trees)) != len(trees):
         raise TeamError("Hai phiên dùng chung một worktree")
 
+    router = str(data.get("router") or "none")
+    if router not in ROUTERS:
+        raise TeamError(f"`router` phải là một trong {ROUTERS}")
+
     return Team(
+        router=router,
         root=root,
         project=project,
         main_branch=str(data.get("main_branch") or "main"),
