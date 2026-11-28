@@ -226,6 +226,21 @@ Các mục gốc của giai đoạn này:
 
 ### Giai đoạn 5: mở rộng
 
+Đã có mã. Đã chạy thử trên Linux hai dự án song song với phiên thật: phiên
+`alpha-builder` thấy `beta-backend` trong `ListAgents`, tin gửi sang đó bị hook
+chặn, tin gửi `alpha-backend` tới nơi, và dự án beta không nhận gì.
+
+- `pwf init --workers N` bật sẵn N worker theo các thư mục lớn nhất.
+- `pwf status` là bảng trạng thái của cả cụm: phiên, số commit chưa gộp của
+  từng worktree, task đang mở, tổng hợp router. `--watch <giây>` làm mới liên
+  tục.
+- `pwf router-stats` tổng hợp log quyết định. Không có nhãn đúng sai, nên độ
+  chính xác được ước lượng bằng kết cục: một tin giao việc được cho đi là hợp
+  nếu worker trả `result`, nghi sai nếu worker trả `blocked`. Số này chỉ có
+  nghĩa khi đã có log từ Jev thật.
+
+Các mục gốc của giai đoạn này:
+
 - Tăng lên ba worker.
 - Áp dụng cho dự án thứ hai, chạy song song với dự án đầu để kiểm tra tin không
   đi nhầm dự án.

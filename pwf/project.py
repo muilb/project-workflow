@@ -95,9 +95,14 @@ def propose_areas(files: List[str], limit: int = 3) -> List[tuple]:
     return top.most_common(limit)
 
 
-def render_team(prefix: str, main_branch: str, dirname: str, areas: List[tuple]) -> str:
+def render_team(prefix: str, main_branch: str, dirname: str, areas: List[tuple],
+                active: int = 1) -> str:
+    lasts = [slug(a.split("/")[-1]) for a, _ in areas]
+    # Hai thư mục cùng tên cuối (src/api, lib/api) thì dùng cả đường dẫn.
+    shorts = {a: (l if lasts.count(l) == 1 else slug(a)) for (a, _), l in zip(areas, lasts)}
+
     def worker(area: str, commented: bool) -> str:
-        short = slug(area.split("/")[-1])
+        short = shorts[area]
         text = (
             f"  - name: {prefix}-{short}\n"
             f"    role: worker\n"
@@ -113,8 +118,9 @@ def render_team(prefix: str, main_branch: str, dirname: str, areas: List[tuple])
                            for line in text.splitlines(keepends=True))
         return text
 
-    first = areas[0][0] if areas else None
-    worker_name = f"{prefix}-{slug(first.split('/')[-1])}" if first else f"{prefix}-worker"
+    on = [a for a, _ in areas[:max(1, active)]]
+    off = [a for a, _ in areas[len(on):]]
+    names = [f"{prefix}-{shorts[a]}" for a in on] or [f"{prefix}-worker"]
     out = [
         "# Cấu hình đội hình cho dự án này. Sửa rồi chạy `pwf up`.\n"
         "# `pwf init` chạy lại sẽ không ghi đè file này.\n"
@@ -142,24 +148,24 @@ def render_team(prefix: str, main_branch: str, dirname: str, areas: List[tuple])
         "    permission_mode: acceptEdits\n"
         "    inbound: accept\n"
         f"    worktree: ../{dirname}.worktrees/builder\n"
-        f"    can_send_to: [{prefix}-architect, {worker_name}]\n"
+        f"    can_send_to: [{prefix}-architect, {', '.join(names)}]\n"
         "\n"
     ]
-    if first:
-        out.append(worker(first, commented=False))
+    if on:
+        out.append("\n".join(worker(a, commented=False) for a in on))
     else:
         out.append(
-            f"  - name: {worker_name}\n    role: worker\n    model: haiku\n"
+            f"  - name: {names[0]}\n    role: worker\n    model: haiku\n"
             "    permission_mode: acceptEdits\n    inbound: accept\n"
             f"    worktree: ../{dirname}.worktrees/worker\n"
             f"    can_send_to: [{prefix}-builder]\n    scope: []\n"
         )
-    if len(areas) > 1:
+    if off:
         out.append(
             "\n  # Worker đề xuất thêm theo thư mục. Bỏ dấu # để bật, và thêm tên\n"
             f"  # vào can_send_to của {prefix}-builder.\n"
         )
-        out += [worker(a, commented=True) for a, _ in areas[1:]]
+        out += [worker(a, commented=True) for a in off]
     return "".join(out)
 
 
@@ -199,7 +205,8 @@ def build_graph(root: Path) -> Optional[str]:
     return None
 
 
-def init(root: Path, prefix: Optional[str], graph: Optional[bool], say=print) -> None:
+def init(root: Path, prefix: Optional[str], graph: Optional[bool], say=print,
+         workers: int = 1) -> None:
     root = root.resolve()
     sv = survey(root)
     prefix = slug(prefix or root.name)
@@ -216,9 +223,9 @@ def init(root: Path, prefix: Optional[str], graph: Optional[bool], say=print) ->
     if team_path.exists():
         say(f"  Giữ nguyên {team_path.relative_to(root)} (đã có).")
     else:
-        areas = propose_areas(code or sv.files)
+        areas = propose_areas(code or sv.files, limit=max(3, workers))
         team_path.write_text(
-            render_team(prefix, sv.main_branch, root.name, areas), encoding="utf-8"
+            render_team(prefix, sv.main_branch, root.name, areas, workers), encoding="utf-8"
         )
         say(f"  Đã ghi {team_path.relative_to(root)}; worker đề xuất: "
             + (", ".join(f"{a} ({n} file)" for a, n in areas) or "không có"))

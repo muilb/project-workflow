@@ -161,14 +161,61 @@ def for_team(team: Team) -> Optional[JevRouter]:
     return JevRouter(load_config(team.root))
 
 
-def log_decision(root: Path, sender: str, target: str, text: str, d: Decision) -> None:
+def log_decision(root: Path, sender: str, target: str, text: str, d: Decision,
+                 task: str = "", kind: str = "") -> None:
     path = root / WORKFLOW_DIR / "log" / "router.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
     entry = {"time": time.strftime("%Y-%m-%dT%H:%M:%S"), "from": sender, "to": target,
-             "action": d.action, "final_to": d.to or target, "reason": d.reason,
+             "task": task, "type": kind, "action": d.action, "final_to": d.to or target, "reason": d.reason,
              "model": d.model, "answers": d.answers,
              "state": " ".join(text.split())[:STATE_LOG_CHARS]}
     if d.error:
         entry["error"] = d.error
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def read_log(root: Path) -> List[dict]:
+    path = root / WORKFLOW_DIR / "log" / "router.jsonl"
+    out = []
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                out.append(json.loads(line))
+            except ValueError:
+                continue
+    return out
+
+
+def stats(decisions: List[dict], messages_log: List[dict], thresholds: dict) -> dict:
+    """Tổng hợp log quyết định, và đối chiếu với việc xảy ra sau đó.
+
+    Không có nhãn đúng sai, nên dùng kết cục làm thước đo gần đúng: một tin giao
+    việc được cho đi là "hợp" nếu tin đầu tiên worker gửi lại về task đó là
+    `result`, và "nghi sai" nếu là `blocked`.
+    """
+    out = {"total": len(decisions), "errors": sum(1 for d in decisions if d.get("error")),
+           "actions": {}, "models": {}, "near_threshold": 0,
+           "outcomes": {"hợp": 0, "nghi sai": 0, "chưa rõ": 0}, "suspects": []}
+    for d in decisions:
+        out["actions"][d["action"]] = out["actions"].get(d["action"], 0) + 1
+        if d.get("model"):
+            out["models"][d["model"]] = out["models"].get(d["model"], 0) + 1
+        rec = (d.get("answers") or {}).get("recipient")
+        if rec:
+            p = rec.get("probabilities", {}).get(rec.get("choice"), 0)
+            if abs(p - thresholds["recipient_min"]) < 0.1:
+                out["near_threshold"] += 1
+        routed = d.get("type") == "assign" and "task_size" in (d.get("answers") or {})
+        if not routed or d["action"] == "block" or not d.get("task"):
+            continue
+        reply = next((m for m in messages_log
+                      if m.get("task") == d["task"] and m.get("from") == d["final_to"]
+                      and m.get("time", "") >= d["time"] and m.get("type") in ("result", "blocked")),
+                     None)
+        verdict = "chưa rõ" if reply is None else ("hợp" if reply["type"] == "result" else "nghi sai")
+        out["outcomes"][verdict] += 1
+        if verdict == "nghi sai":
+            out["suspects"].append({"task": d["task"], "to": d["final_to"],
+                                    "action": d["action"], "state": d.get("state", "")})
+    return out

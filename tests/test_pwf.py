@@ -123,7 +123,7 @@ def test_up_print_creates_worktrees_and_is_repeatable(repo):
     assert launch.up(team, "print", say=lines.append) == 0
     out = []
     launch.status(team, "print", say=out.append)
-    assert any("pwf/shop-builder, 0 file" in l for l in out)
+    assert any("pwf/shop-builder, 0 commit chưa gộp, 0 file chưa commit" in l for l in out)
 
 
 # ---------- giai đoạn 2: mẫu tin ----------

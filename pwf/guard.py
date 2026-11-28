@@ -71,7 +71,7 @@ def check(payload: dict, team: team_mod.Team, sender: str,
         routed = msg.type == "assign" and team.session(target).role == "worker"
         candidates = router_mod.candidates_for(team, me) if routed else {}
         d = router.decide(text, target, candidates)
-        router_mod.log_decision(team.root, sender, target, text, d)
+        router_mod.log_decision(team.root, sender, target, text, d, msg.task, msg.type)
         if d.action == "block":
             return Outcome(block=d.reason)
         if d.action == "redirect":

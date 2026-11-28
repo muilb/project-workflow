@@ -20,6 +20,8 @@ def build_parser() -> argparse.ArgumentParser:
     i = sub.add_parser("init", help="khảo sát dự án và sinh .workflow/")
     i.add_argument("path", nargs="?", default=".")
     i.add_argument("--prefix", help="tiền tố tên phiên (mặc định: tên thư mục)")
+    i.add_argument("--workers", type=int, default=1, metavar="N",
+                   help="số worker bật sẵn, theo các thư mục lớn nhất (mặc định 1)")
     g = i.add_mutually_exclusive_group()
     g.add_argument("--graph", dest="graph", action="store_true", default=None,
                    help="luôn dựng đồ thị graphify")
@@ -33,11 +35,14 @@ def build_parser() -> argparse.ArgumentParser:
                        help="tmux, wt (Windows Terminal) hoặc print (chỉ in lệnh)")
         if name != "status":
             c.add_argument("sessions", nargs="*", help="chỉ các phiên này")
+        else:
+            c.add_argument("--watch", type=float, metavar="GIÂY", help="làm mới liên tục")
 
     sub.add_parser("tasks", help="trạng thái các task theo sổ tin")
 
     o = sub.add_parser("reopen", help="đặt lại bộ đếm tin của một task đã chạm giới hạn")
     o.add_argument("task")
+    sub.add_parser("router-stats", help="tổng hợp log quyết định của router")
     sub.add_parser("check", help="rà cấu hình và rào chắn của dự án")
 
     r = sub.add_parser("route", help="hỏi router một tin sẽ được xử lý thế nào, không gửi")
@@ -71,7 +76,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         if args.cmd == "init":
-            project.init(Path(args.path), args.prefix, args.graph)
+            project.init(Path(args.path), args.prefix, args.graph, workers=args.workers)
             return 0
         if args.cmd == "guard":
             return guard.main(args.root, args.session)
@@ -87,9 +92,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 0
         if args.cmd == "check":
             return 1 if checks.report(checks.run(team)) else 0
+        if args.cmd == "router-stats":
+            return launch.router_stats(team)
         if args.cmd == "tasks":
             return launch.tasks(team)
         if args.cmd == "status":
+            if args.watch:
+                return launch.watch(team, backend, args.watch)
             return launch.status(team, backend)
         unknown = set(args.sessions) - {s.name for s in team.sessions}
         if unknown:

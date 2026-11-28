@@ -7,11 +7,13 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from importlib import resources
 from pathlib import Path
 from typing import List, Optional
 
 from . import messages
+from . import router as router_mod
 from .project import GRAPH_DIR
 from .team import WORKFLOW_DIR, Session, Team
 
@@ -223,8 +225,10 @@ def down(team: Team, backend: str, only: Optional[List[str]] = None, say=print) 
 
 
 def status(team: Team, backend: str, say=print) -> int:
+    """Bảng trạng thái của cả cụm: phiên, task đang mở, router."""
     running = tmux_windows(team) if backend == "tmux" else None
     say(f"Dự án {team.project} · {team.root}")
+    say("Phiên:")
     for s in team.sessions:
         state = "?" if running is None else ("chạy" if s.name in running else "tắt")
         path = team.cwd(s)
@@ -235,6 +239,60 @@ def status(team: Team, backend: str, say=print) -> int:
         else:
             dirty = len(_git(path, "status", "--porcelain").stdout.splitlines())
             head = _git(path, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
-            tree = f"{head}, {dirty} file chưa commit"
+            ahead = _git(path, "rev-list", "--count", f"{team.main_branch}..HEAD").stdout.strip()
+            tree = f"{head}, {ahead or '?'} commit chưa gộp, {dirty} file chưa commit"
         say(f"  {s.name:<28} {s.role:<10} {s.model:<8} {state:<5} {tree}")
+
+    rows = messages.tasks(team.root)
+    open_rows = [e for e in rows if e["state"] != "xong"]
+    say(f"Task: {len(open_rows)} đang mở, {len(rows) - len(open_rows)} đã xong")
+    for e in open_rows:
+        mark = "  (chạm giới hạn tin)" if e["count"] >= team.messages_per_task else ""
+        say(f"  {e['task']:<14} {e['state']:<9} {e['from']} → {e['to']} "
+            f"({e['count']}/{team.messages_per_task} tin){mark}")
+
+    if team.router == "none":
+        say("Router: tắt")
+    else:
+        log = router_mod.read_log(team.root)
+        by = {}
+        for d in log:
+            by[d["action"]] = by.get(d["action"], 0) + 1
+        errors = sum(1 for d in log if d.get("error"))
+        parts = ", ".join(f"{k} {v}" for k, v in sorted(by.items())) or "chưa có quyết định"
+        say(f"Router: {team.router} · {parts}" + (f" · {errors} lỗi" if errors else ""))
+    return 0
+
+
+def watch(team: Team, backend: str, seconds: float) -> int:
+    try:
+        while True:
+            print("\033[2J\033[H", end="")
+            status(team, backend)
+            print(f"\n(làm mới mỗi {seconds:g} giây; Ctrl+C để thoát)")
+            time.sleep(seconds)
+    except KeyboardInterrupt:
+        return 0
+
+
+def router_stats(team: Team, say=print) -> int:
+    cfg = router_mod.load_config(team.root)
+    st = router_mod.stats(router_mod.read_log(team.root), messages.entries(team.root),
+                          cfg["thresholds"])
+    if not st["total"]:
+        say("Chưa có quyết định nào trong log của router.")
+        return 0
+    say(f"Quyết định: {st['total']} · lỗi: {st['errors']}")
+    say("  theo hành động: " + ", ".join(f"{k} {v}" for k, v in sorted(st["actions"].items())))
+    if st["models"]:
+        say("  theo model: " + ", ".join(f"{k} {v}" for k, v in sorted(st["models"].items())))
+    say(f"  lựa chọn người nhận sát ngưỡng {cfg['thresholds']['recipient_min']} (trong 0,1): "
+        f"{st['near_threshold']}")
+    o = st["outcomes"]
+    judged = o["hợp"] + o["nghi sai"]
+    say(f"Tin giao việc được cho đi: hợp {o['hợp']}, nghi sai {o['nghi sai']}, chưa rõ {o['chưa rõ']}"
+        + (f" · tỉ lệ hợp {o['hợp'] / judged:.0%}" if judged else ""))
+    say("  (hợp: worker trả `result`; nghi sai: worker trả `blocked`)")
+    for x in st["suspects"]:
+        say(f"  nghi sai: {x['task']} → {x['to']} ({x['action']}): {x['state'][:80]}")
     return 0

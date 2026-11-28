@@ -42,7 +42,11 @@ trường `TYPESAFE_API_KEY`. Xem trước quyết định cho một tin bằng 
 `pwf check` rà cấu hình và chạy trước mỗi `pwf up`. Mỗi task dừng lại sau 12
 tin để hai phiên không nhắn qua lại mãi; mở lại bằng `pwf reopen <mã-task>`.
 
-Đã xong giai đoạn 1, 2 và 4, và phần khung của giai đoạn 3.
+`pwf init --workers 3` bật sẵn ba worker. `pwf status --watch 5` là bảng trạng
+thái của cả cụm. `pwf router-stats` tổng hợp log quyết định của router.
+
+Mọi giai đoạn trong kế hoạch đã có mã. Còn thiếu: chạy trên Windows, gọi Jev
+thật, và công cụ `route` dạng MCP. Xem [docs/phase0-results.md](docs/phase0-results.md).
 
 ## Đọc theo thứ tự
 

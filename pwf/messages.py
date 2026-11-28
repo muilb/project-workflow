@@ -172,7 +172,7 @@ def record(root: Path, sender: str, recipient: str, msg: Message) -> None:
 STATE = {"assign": "đang làm", "result": "chờ xem", "blocked": "bị chặn"}
 
 
-def _entries(root: Path) -> List[dict]:
+def entries(root: Path) -> List[dict]:
     path = log_path(root)
     out = []
     if path.is_file():
@@ -192,7 +192,7 @@ def tasks(root: Path) -> List[dict]:
     `count` là số tin kể từ lần mở lại gần nhất; hook so nó với giới hạn.
     """
     latest: Dict[str, dict] = {}
-    for e in _entries(root):
+    for e in entries(root):
         prev = latest.get(e["task"], {})
         if e.get("type") == "reopen":
             if prev:
